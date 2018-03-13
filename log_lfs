@@ -1,0 +1,178 @@
+# ------------------------------------------------------------
+# Mon Mar 12 23:35:11 CST 2018
+# 1 check host system and appropriate versions
+# ------------------------------------------------------------
+        $ bash version_check.sh
+
+   make some problem clear by 
+
+        $ bash version_check.sh |grep not
+in my Linux debian 4.9.0-6-amd64 #1 SMP Debian 4.9.82-1+deb9u3 (2018-03-02) x86_64 GNU/Linux
+i get three lines: bison, yacc, /bin/sh. I install bison directly by
+
+        $ sudo apt-get install bison
+
+In fact, bison is yacc replacement, try man bison, so install bison,
+yacc is installed also.
+
+and, change target of link of /bin/sh by
+        $ sudo unlink /bin/sh
+        $ sudo ln -s /bin/bash /bin/sh
+Now check again, I found versions in my host are all satisfied.
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# Tue Mar 13 14:18:55 CST 2018
+# 2 create new partition
+    I has no empty partition in my host. Fortunately, ext4 supports
+resize now. So the first step will be shrinking my /home partition
+as follows:
+    Be careful, you must know what you are doing which maybe result in
+unpredictive result. 
+
+        resize home::
+            $ su
+            <passwd>
+            # umount /dev/sdaN   # check by df -Th, umount /home 
+            # fdisk /dev/sda
+            (command m for help): p   # check /home disk partition and record the start
+                                      # start head of it
+            (command m for help): d   
+            (command m for help): <home partition>
+            (command m for help): n
+            (command m for help): <start sector> # must keep same as before
+            (command m for help): <end sector>   # to modified into approximate size
+            (command m for help): 
+            # e2fsck -f /dev/sdaN
+            # resize2fs /dev/sdaN  <size>        # the size must be less then its physical
+                                                 # size given by e2fsck
+                                                 # if not, when reboot, you will cannot
+                                                 # enter system as usually because of
+                                                 # /home cannot mount automatically
+                                                 # It is better keep the size here same
+                                                 # as the physical size given by e2fsck.
+
+            # mount /dev/sdaN                    # remount
+
+    Now i should plan my LFS file system now, as recommended by LFS, 
+            -----------------
+            /           10G
+            /boot       100M
+            /swap       6G (1.5*RAM) 
+            /home       12G
+            /usr        6G
+            /opt        5G
+            /tmp        3G
+            -----------------
+            all        =42G
+    Now create these partions in fdisk, take /root as example
+            (command m for help): n
+            (some prompt):<Enter>
+            (some prompt):+10G
+
+you can create others like this.
+After partitions are created, OS should be reboot.
+    
+    Now make file system by
+        # mkfs -v -t ext4 /dev/sda10      #sda10 is the partition is prepared for /root
+in my case, this command should be applied to sda[10-11,13-16], sda12 is for 
+swap.
+
+make swap by        
+        # mkswap /dev/sda12
+
+    Now mount the file system one-by-one
+first mount root by,
+        $ sudo mkdir /mnt/lfs
+        $ sudo mount -t ext4 /dev/sda10 /mnt/lfs
+
+then mount others by,
+        $ mkdir -v /mnt/lfs/usr /mnt/lfs/boot /mnt/lfs/home /mnt/lfs/opt/ \
+         /mnt/lfs/tmp
+        $ sudo mount -vt ext4 /dev/sda11 /mnt/lfs/boot
+        $ sudo mount -vt ext4  /dev/sda13 /mnt/lfs/home
+        $ sudo mount -vt ext4 /dev/sda14 /mnt/lfs/usr
+        $ sudo mount -vt ext4 /dev/sda15 /mnt/lfs/opt
+        $ sudo mount -vt ext4 /dev/sda16 /mnt/lfs/tmp
+After mount them, you can check it by 
+        $ df -Th
+
+    Enable swap by
+        $ sudo /sbin/swapon -v /dev/sda12
+check by
+        $ free -h
+you should notice your swap is enlarged.  If you are not sure, you can close
+swap by 
+        $ sudo /sbin/swapoff -v /dev/sda12
+then check by "free -h" again.
+
+
+    When you after reboot, these manually mounted partitions will does not work,
+so add them into your /etc/fstab file.
+    Here is my /etc/fstab, 
+
+            # /etc/fstab: static file system information.
+            #
+            #
+            # lfs file systems follow:
+            #
+            UUID=cd3d6d06-79a0-4972-94bf-d4243a092b1a /mnt/lfs               ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=09550571-f4fd-46dd-9139-25a74478c681 /mnt/lfs/boot          ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=9b3bd006-fb64-4ff0-b947-e664c3e5240a /mnt/lfs/usr           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=50933e77-b31d-424a-b4db-1d784a101831 /mnt/lfs/home          ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=9071528d-060c-4cf0-b90c-08f252e156cb /mnt/lfs/opt           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=af92e0be-b6ec-4b7a-8b3d-4b793db5deac /mnt/lfs/tmp           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
+            UUID=0ef25b72-0519-4d30-9a81-b6aaad62644d none 			 swap    sw              	 	0       0
+
+where uuid is obtained by blkid, uid is get by id -u, and gid is get by id -g.
+
+# ------------------------------------------------------------
+# Tue Mar 13 15:38:14 CST 2018
+# 3 download sources
+
+
+    First,create by sources by
+       $ mkdir -v /mnt/lfs/sources
+       $ cd sources
+
+Get download list file wget-list , by
+
+       $ wget www.linuxfromscratch.org/lfs/view/stable-systemd/wget-list
+
+then download  all needed sources by
+
+       $ wget --input-file=wget-list -c --directory-prefix=/mnt/lfs/sources
+
+Add md5 correction, download md5sums file by,
+
+       $ wget www.linuxfromscratch.org/lfs/view/stable-systemd/md5sums
+
+check md5sum by
+       $ pushd $(/mnt/lfs/sources)
+       $ md5sum -c md5sum
+       $ popd
+
+    In this process, gnu download repository cannot work for me, i found
+another repository for me, but it will works with a little different 
+wget-list and md5sum files.
+    I name these two files as wget-list-working and md5sum-working and 
+gives them patachs wget-list.patch and md5sum.patch. If you want use 
+mine, just apply these two patches by
+       $ patch < wget-list.patch
+       $ patch < md5sum.patch
+then run commands above again. I think sources now are download successfully.
+
+    Thanks to this site,
+       http://git.savannah.nongnu.org/cgit/
+
+It seems to provide all nongnu versions of gnu tools.
+
+# ------------------------------------------------------------
+# Tue Mar 13 17:43:54 CST 2018
+# 4 create toolchains
+
+Create tool-chaines
+       $ mkdir -v /mnt/lfs/tools
+       $ sudo ln -vs /mnt/lfs/tools /   # create /tools symblink
+
+
