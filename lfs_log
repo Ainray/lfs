@@ -17,7 +17,7 @@ yacc is installed also.
 
 and, change target of link of /bin/sh by
         $ sudo unlink /bin/sh
-        $ sudo ln -s /bin/bash /bin/sh
+        $ sudo ln -sv /bin/bash /bin/sh
 Now check again, I found versions in my host are all satisfied.
 # ------------------------------------------------------------
 
@@ -71,7 +71,7 @@ unpredictive result.
             (some prompt):+10G
 
 you can create others like this.
-After partitions are created, OS should be reboot.
+After partitions are created, OS maybe need reboot to make new partition available.
     
     Now make file system by
         # mkfs -v -t ext4 /dev/sda10      #sda10 is the partition is prepared for /root
@@ -81,59 +81,45 @@ swap.
 make swap by        
         # mkswap /dev/sda12
 
-    Now mount the file system one-by-one
-first mount root by,
-        $ sudo mkdir /mnt/lfs
-        $ sudo mount -t ext4 /dev/sda10 /mnt/lfs
+# ------------------------------------------------------------
+# Tue Mar 13 17:43:54 CST 2018
+# 3 create environment
+#
+    create new user lfs, target root file system by 
+        # lfs_adduser.sh
 
-then mount others by,
-        $ mkdir -v /mnt/lfs/usr /mnt/lfs/boot /mnt/lfs/home /mnt/lfs/opt/ \
-         /mnt/lfs/tmp
-        $ sudo mount -vt ext4 /dev/sda11 /mnt/lfs/boot
-        $ sudo mount -vt ext4  /dev/sda13 /mnt/lfs/home
-        $ sudo mount -vt ext4 /dev/sda14 /mnt/lfs/usr
-        $ sudo mount -vt ext4 /dev/sda15 /mnt/lfs/opt
-        $ sudo mount -vt ext4 /dev/sda16 /mnt/lfs/tmp
-After mount them, you can check it by 
-        $ df -Th
+then login as new user lfs, create the comfortable working environment.
+There is one suggest, you can copy your usual user bash configuration files
+(usually including .bashrc and .bash_setting, .vimrc). More should talk about
+.vim directory if you use vim as main editor. In some cases, you maybe have 
+install a large number of plugins, and do not just want to copy it. There is 
+a little trick, you can create a new group shared by your usual user and new 
+lfs user, and rename .vim into .vimshare, and change its group into the new
+group, and give whole permission to the group. At last, you create symlinks
+for usual user and new lfs user. Now you do not change anything about vim 
+configuration and your new lfs user and usual user can both use vim in 
+the way as before. Used commands maybe follow as:
 
-    Enable swap by
-        $ sudo /sbin/swapon -v /dev/sda12
-check by
-        $ free -h
-you should notice your swap is enlarged.  If you are not sure, you can close
-swap by 
-        $ sudo /sbin/swapoff -v /dev/sda12
-then check by "free -h" again.
+        $ group add vimshare
+        $ usermod -a -G vimshare foo
+        $ usermod -a -G vimshare lfs
+        $ mv ~/.vim ~/.vimshare
+        $ ln -sv ~/.vimshare ~/.vim
+        $ chmod 770 -R ~/.vimshare
 
+after login as new user, create new symlinks by 
+        $ ln -sv /home/foo/.vimshare ~/.vim
 
-    When you after reboot, these manually mounted partitions will does not work,
-so add them into your /etc/fstab file.
-    Here is my /etc/fstab, 
+Now, you can work as before, first create the new personal environment  using
 
-            # /etc/fstab: static file system information.
-            #
-            #
-            # lfs file systems follow:
-            #
-            UUID=cd3d6d06-79a0-4972-94bf-d4243a092b1a /mnt/lfs               ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=09550571-f4fd-46dd-9139-25a74478c681 /mnt/lfs/boot          ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=9b3bd006-fb64-4ff0-b947-e664c3e5240a /mnt/lfs/usr           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=50933e77-b31d-424a-b4db-1d784a101831 /mnt/lfs/home          ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=9071528d-060c-4cf0-b90c-08f252e156cb /mnt/lfs/opt           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=af92e0be-b6ec-4b7a-8b3d-4b793db5deac /mnt/lfs/tmp           ext4    usrname=inray,rw,uid=1000,gid=1000,umask=0022,auto 0 2
-            UUID=0ef25b72-0519-4d30-9a81-b6aaad62644d none 			 swap    sw              	 	0       0
-
-where uuid is obtained by blkid, uid is get by id -u, and gid is get by id -g.
+        $ lfs_init.sh
 
 # ------------------------------------------------------------
 # Tue Mar 13 15:38:14 CST 2018
-# 3 download sources
+# 4 download sources
 
-
-    First,create by sources by
-       $ mkdir -v /mnt/lfs/sources
-       $ cd sources
+# check LFS has been set before you proceed
+#
 
 Get download list file wget-list , by
 
@@ -167,43 +153,6 @@ then run commands above again. I think sources now are download successfully.
 
 It seems to provide all nongnu versions of gnu tools.
 
-# ------------------------------------------------------------
-# Tue Mar 13 17:43:54 CST 2018
-# 4 create toolchains
-
-    create tool-chaines
-
-           $ mkdir -v /mnt/lfs/tools
-           $ sudo ln -vs /mnt/lfs/tools /   # create /tools symblink
-
-    create personal environment in ~/.bash_lfs
-            # ----------- .bash_lfs -----------------------
-            #  .bash_lfs 
-            #  special by Linux from scratch
-            #  it is sourced by bash startup file
-            LFS=/mnt/lfs
-            LC_ALL=POSIX
-            LFS_TGT=$(uname -m)-lfs-linux-gnu
-            PATH=/tools/bin/:/bin:/usr/bin:.:${HOME}/.bash
-            export LFS LC_ALL LFS_TGT PATH 
-            pathaddmul "/mnt/lfs" CDPATH
-
-            # make use dual CPU
-            # can also by make -j2
-            export MAKEFLAGS=' -j 2'
-
-            # ----------- .bash_lfs -----------------------
-            
-put in ~/.bash_profile following:
-            # Linux from scratch
-            if [ -f ~/.bash_lfs ]; then
-                 . ~/.bash_lfs
-            fi
-rember source it manually by
-            $ . ~/.bash_lfs
-check it by 
-            $ echo $LFS
-            $ echo $LFS_TGT
         
 # ------------------------------------------------------------
 # Tue Mar 13 20:55:32 CST 2018
@@ -267,7 +216,7 @@ you should get the same output
 
 # ------------------------------------------------------------
 # Wed Mar 14 08:09:58 Asia 2018
-# 7 change ownership
+# 7 change ownership, create basic file system
 #
     Important, before change, double check LFS environment variable
 is exported in root's environment.
@@ -276,3 +225,11 @@ is exported in root's environment.
     
     Change ownership of $LFS/tools to root by
         # chown -R root:root $LFS/tools
+        
+    Now prepare virtual kernal file system, change root into target by
+        # lfs_chroot.sh
+
+and make basic target file system as well as enable login logging system after 
+change into target.
+        # lfs_mkfs.sh
+        # lfs_mksymlink.sh
