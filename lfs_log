@@ -233,3 +233,54 @@ and make basic target file system as well as enable login logging system after
 change into target.
         # lfs_mkfs.sh
         # lfs_mksymlink.sh
+    
+# ------------------------------------------------------------
+# Wed Mar 14 20:33:59 Asia 2018
+# 8  install native tools in target system 
+
+    First install man pages and Linux headers by 
+
+        # lfs_target_man_install.sh
+        # lfs_target_linux_headers_install.sh
+         
+then install glibc
+        # lfs_glibc_install.sh
+When first install glibc, there occurs errors. Errors maybe says something like
+    # configure:2643: error: in `/sources/glibc-2.27/build':
+    # configure:2645: error: cannot compute suffix of object files: cannot compile
+    # See `config.log' for more details
+and when you type gcc, no such file or directory. And this error is also documented
+in LFS-FAQ (no such file or directory).
+    # The problem  is path problem, target system cannot detect native gcc,
+so I recompile the gcc-7.3.0 in the 2nd phase again, after reinstall, type 
+gcc -v, it gives right outputs. There is a little trick worth to say. As in 
+step 7,  the ownership of $LFS/tools has been changed into root. But as LFS
+say, compile the packages as lfs user, how to work around this problem. I
+just first compile as usually by running
+    # lfs_gcc_install_p2.sh
+When run "make install", it should give errors. Do not worry. Just run "su"
+to login as root, then run "make install" again.
+    For me, it is not so soft. After gcc is reinstalled, there still errors
+exits. But, looking into the config.log file, the similar problem for "as".
+So I run "as" from bash, it also gives "No such file or directory" error. Woo,
+the "binutils" must be reinstalled again too. As before, I reinstall "binutils"
+in the 2nd phase. And again, first just run 
+    # lfs_binutils_install_p2.sh
+to compile it as usual, it ends and gives error while installing, login into 
+"root" to "make install". This work should do twice for "binutils". Because,
+it clean "ld" directory first, and should recompile as "lfs" user, and 
+install as "root" by "cp -v ...", the last command in "lfs_binutils_install.sh 
+file."
+    Now, runing "lsf_target_glibc_install.sh" install and test gcc properly.
+No errors. Congratulations.
+
+    After glibc installed, some more configuration should be done by,
+
+    # lfs_target_glibc_configure.sh
+    #
+then change the tool-chain linker and include path by
+    # lfs_target_toolchain_adjust.sh
+
+After tool chain has been adjuest, a short test can be run,
+    # lfs_target_test_6.10.sh
+and its output should like lfs_target_test_6.10_dummy.log

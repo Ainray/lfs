@@ -4,10 +4,16 @@ GCC="gcc-7.3.0.tar.xz"
 [ ! -d ${GCC%.tar.xz} ] && echo "tar -xf ${GCC}" && tar -xf ${GCC}
 echo "cd ${GCC%.tar.xz}"
 cd ${GCC%.tar.xz}
+
 #prepare mpfr, gmp, mpc
 [ ! -d mpc ] && tar -xf ../mpc-1.1.0.tar.gz && mv -v mpc-1.1.0/ mpc
 [ ! -d mpfr ] && tar -xf ../mpfr-4.0.1.tar.xz && mv -v mpfr-4.0.1 mpfr
 [ ! -d gmp ] && tar -xf ../gmp-6.1.2.tar.xz  && mv -v gmp-6.1.2/ gmp
+
+#create full version of internal header
+cat gcc/limitx.h gcc/glimits.h  gcc/limity.h > \
+    `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include-fixed/limits.h
+
 
 # before you run this script, please first make a backup 
 # and test first.

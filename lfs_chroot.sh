@@ -20,10 +20,11 @@ if [ -h $LFS/dev/shm ]; then
 	shmdir=$(readlink $LFS/dev/shm)
 	[ ! -d $LFS/$shmdir ]  && mkdir -pv $LFS/$shmdir
 fi
-# install passwd and group file
+# copy configuration  files
 [ ! -d ${LFS}/etc ] && mkdir ${LFS}/etc
 [ ! -f ${LFS}/etc/passwd ]  && install -m644 lfs_passwd $LFS/etc/passwd
 [ ! -f ${LFS}/etc/group ]  && install -m644 lfs_group $LFS/etc/group
+[ ! -f ${LFS}/etc/nsswitch.conf ]  && install -m644 lfs_nsswitch $LFS/etc/nsswitch.conf
 
 # change root now
 chroot "$LFS" /tools/bin/env -i \

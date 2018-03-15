@@ -1,4 +1,5 @@
 #!/bin/bash
+cd $LFS/sources
 FILE="file-5.32.tar.gz"
 echo "tar -xf ${FILE}"
 tar -xf ${FILE}

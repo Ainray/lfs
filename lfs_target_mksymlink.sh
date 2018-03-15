@@ -2,7 +2,7 @@
 # this scripts is used after chroot
 # essential symlinks
 mksymlink(){
-    ln -sv /tools/bin/{bash,cat,dd,echo,ln,pwd,rm,stty} /bin
+    ln -sv /tools/bin/{bash,cat,dd,echo,ln,pwd,rm,sed,stty} /bin
     ln -sv /tools/bin/{env,install,perl} /usr/bin
     ln -sv /tools/lib/libgcc_s.so{,.1} /usr/lib
     ln -sv /tools/lib/libstdc++.{a,so{,.6}} /usr/lib
